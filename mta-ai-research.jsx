@@ -34,7 +34,8 @@ const COSTS={train_wrap:[50000,175000],in_car_11x28:[350,1200],in_car_11x42:[500
 
 const STATIONS=["Times Sq–42nd St","Grand Central–42nd St","34th St–Penn Station","14th St–Union Square","Fulton St","34th St–Herald Sq","59th St–Columbus Circle","42nd St–Port Authority","Lexington Ave/59th St","Atlantic Ave–Barclays Ctr","Canal St","Chambers St","23rd St (6th Ave)","23rd St (Park Ave)","West 4th St–Washington Sq","Broadway Junction","Jay St–MetroTech","Dekalb Ave","Court Sq","Jackson Hts–Roosevelt Ave","Flushing–Main St","Borough Hall","Wall St","Bowling Green","City Hall","Spring St","Bleecker St","Astor Pl","8th St–NYU","Christopher St","Houston St","Prince St","28th St (Broadway)","51st St","68th St–Hunter College","86th St (Lex)","96th St (Lex)","125th St (Lex)","72nd St (Broadway)","86th St (Broadway)","96th St (Broadway)","116th St–Columbia Univ","125th St (Broadway)","145th St","168th St","181st St","Dyckman St","Inwood–207th St","Woodlawn","Pelham Bay Park","161st St–Yankee Stadium","Fordham Rd","Bedford Park Blvd","Coney Island–Stillwell Ave","Brighton Beach","Prospect Park","Church Ave (B/Q)","7th Ave (Park Slope)","4th Ave–9th St","Smith–9th Sts","Bergen St","Nevins St","Hoyt–Schermerhorn Sts","Franklin Ave","Nostrand Ave","Utica Ave","Broadway (Brooklyn)","Myrtle Ave","Essex St–Delancey St","Bowery","Grand St","Roosevelt Island","Forest Hills–71st Ave","Kew Gardens–Union Tpke","Jamaica Center","Jamaica–179th St","Mets–Willets Point","Junction Blvd","74th St–Broadway","Astoria–Ditmars Blvd","30th Ave","Queensboro Plaza","Long Island City–Court Sq","Greenpoint Ave","Bedford Ave","Lorimer St","Metropolitan Ave","Rockaway Park","Far Rockaway–Mott Ave","Howard Beach–JFK"];
 
-const EMPTY_CO={name:"",description:"",category:CATEGORIES[0],focus:"Unknown",series:"Unknown",backers:"",valuation:"",totalRaised:"",hq:"",nycOffice:false,employeeCount:"",website:"",adAgency:"",strategicIntent:"Unknown",sightings:[],sources:[],lastUpdated:"",tagline:"",messagingTone:[],keyVocabulary:"",visualDescription:"",messagingNotes:"",adRefs:[]};
+const EMPTY_CO={name:"",description:"",category:CATEGORIES[0],focus:"Unknown",series:"Unknown",backers:"",valuation:"",totalRaised:"",hq:"",nycOffice:false,employeeCount:"",website:"",adAgency:"",strategicIntent:"Unknown",sightings:[],sources:[],lastUpdated:"",tagline:"",messagingTone:[],keyVocabulary:"",visualDescription:"",messagingNotes:"",adRefs:[],logoUrl:""};
+function getLogo(website){if(!website)return"";const d=website.replace(/^https?:\/\//,"").replace(/\/.*$/,"");return`https://logo.clearbit.com/${d}`}
 const EMPTY_SIGHT={date:new Date().toISOString().split("T")[0],station:"",lines:[],adFormats:[],busFormats:[],busRoute:"",notes:"",photoDataUrl:null};
 
 function pv(s){if(!s)return 0;const str=String(s).trim().toLowerCase().replace(/[$,]/g,"");const m=str.match(/^([\d.]+)\s*(b|billion|m|million|k|thousand)?$/);if(!m)return parseFloat(str)||0;const n=parseFloat(m[1]),u=m[2]||"";if(u[0]==="b")return n*1e9;if(u[0]==="m")return n*1e6;if(u[0]==="k"||u[0]==="t")return n*1e3;return n}
@@ -197,18 +198,18 @@ export default function App(){
   const[syncStatus,setSyncStatus]=useState(null); // null | "saving" | "saved" | "error"
 
   useEffect(()=>{(async()=>{
+    // show local data immediately so the page renders at once
+    try{const raw=localStorage.getItem(SK);if(raw)setData(JSON.parse(raw));}catch{}
+    setLoaded(true);
+    // sync from Supabase in the background
     try{
       let d=await loadData();
       if(!d){
-        // migrate existing localStorage data on first Supabase load
         const raw=localStorage.getItem(SK);
         if(raw){d=JSON.parse(raw);await saveData(d);}
       }
       if(d)setData(d);
-    }catch{
-      try{const raw=localStorage.getItem(SK);if(raw)setData(JSON.parse(raw));}catch{}
-    }
-    setLoaded(true);
+    }catch{}
   })()},[]);
 
   const save=useCallback(async d=>{
@@ -345,7 +346,7 @@ function TabCompanies({cos,setModal,expRow,setExpRow}){
       </div>
       {cos.map((c,i)=>{const[sl,sh]=sc(c.sightings);const ex=expRow===i;return <div key={i}>
         <div onClick={()=>setExpRow(ex?null:i)} style={{display:"grid",gridTemplateColumns:"1.8fr 1.2fr .6fr .6fr .7fr .5fr .9fr",padding:"14px 18px",borderTop:`1px solid ${P.brdL}`,cursor:"pointer",background:ex?P.sageBg:"transparent",alignItems:"center",transition:"background .15s"}}>
-          <span style={{fontFamily:F.head,fontWeight:600,fontSize:14}}>{c.name||"?"}</span>
+          <span style={{display:"flex",alignItems:"center",gap:8}}>{c.logoUrl&&<img src={c.logoUrl} alt="" onError={e=>e.target.style.display="none"} style={{width:22,height:22,borderRadius:6,objectFit:"contain",border:`1px solid ${P.brdL}`,background:P.white,padding:2,flexShrink:0}}/>}<span style={{fontFamily:F.head,fontWeight:600,fontSize:14}}>{c.name||"?"}</span></span>
           <span style={{fontSize:12,color:P.mu}}>{c.category.split("/")[0].trim()}</span>
           <Tag color={c.focus==="B2B"?P.sage:c.focus==="B2C"?P.olive:P.gold}>{c.focus}</Tag>
           <Tag color={P.mu}>{c.series}</Tag>
@@ -364,6 +365,7 @@ function ExpandedRow({c,idx,setModal}){
   return <div style={{padding:"18px 22px",background:P.bg2,borderTop:`1px solid ${P.brd}`}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",gap:10,flexWrap:"wrap",marginBottom:14}}>
       <div style={{flex:1,minWidth:240}}>
+        {c.logoUrl&&<img src={c.logoUrl} alt={c.name} onError={e=>e.target.style.display="none"} style={{width:36,height:36,borderRadius:8,objectFit:"contain",border:`1px solid ${P.brd}`,background:P.white,padding:4,marginBottom:10,display:"block"}}/>}
         {c.description&&<p style={{fontSize:14,lineHeight:1.65,color:P.txB,margin:"0 0 12px"}}>{c.description}</p>}
 
         {/* Meta row */}
@@ -543,7 +545,8 @@ function Modal({modal,data,save,close}){
     try{
       const r=await doResearch(co.name.trim());
       if(r.correctedName&&r.correctedName.toLowerCase()!==co.name.trim().toLowerCase())setCorr(co.name.trim());
-      setCo(p=>({...p,name:r.correctedName||p.name,description:r.description||p.description,category:CATEGORIES.includes(r.category)?r.category:p.category,focus:FOCUS.includes(r.focus)?r.focus:p.focus,series:SERIES.includes(r.series)?r.series:p.series,backers:r.backers||p.backers,valuation:r.valuation||p.valuation,totalRaised:r.totalRaised||p.totalRaised,hq:r.hq||p.hq,nycOffice:typeof r.nycOffice==="boolean"?r.nycOffice:p.nycOffice,employeeCount:r.employeeCount||p.employeeCount,website:r.website||p.website,adAgency:r.adAgency||p.adAgency,sources:r._sources||[]}));
+      const ws=r.website||co.website;
+      setCo(p=>({...p,name:r.correctedName||p.name,description:r.description||p.description,category:CATEGORIES.includes(r.category)?r.category:p.category,focus:FOCUS.includes(r.focus)?r.focus:p.focus,series:SERIES.includes(r.series)?r.series:p.series,backers:r.backers||p.backers,valuation:r.valuation||p.valuation,totalRaised:r.totalRaised||p.totalRaised,hq:r.hq||p.hq,nycOffice:typeof r.nycOffice==="boolean"?r.nycOffice:p.nycOffice,employeeCount:r.employeeCount||p.employeeCount,website:ws,adAgency:r.adAgency||p.adAgency,sources:r._sources||[],logoUrl:getLogo(ws)}));
       setDone(true);
     }catch(e){setErr("Research failed — fill manually.");console.error(e)}setRng(false);
   };
@@ -624,6 +627,7 @@ function Modal({modal,data,save,close}){
           <button onClick={()=>setMinimized(true)} title="Minimize" style={{background:"none",border:`1px solid ${P.brd}`,borderRadius:8,width:28,height:28,cursor:"pointer",color:P.mu,fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>–</button>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"end",marginBottom:done||err||rng?8:14}}>
+          {co.logoUrl&&done&&<img src={co.logoUrl} alt="" onError={e=>e.target.style.display="none"} style={{width:42,height:42,borderRadius:10,objectFit:"contain",border:`1px solid ${P.brd}`,background:P.white,padding:4,flexShrink:0}}/>}
           <div style={{flex:1}}><Inp label="Company Name" value={co.name} onChange={v=>{upd("name",v);setDone(false);setErr(null)}} ph="Perplexity, Jasper, Harvey AI…"/></div>
           <button onClick={doR} disabled={rng||!co.name.trim()} style={{padding:"10px 18px",borderRadius:12,border:"none",fontFamily:F.head,fontSize:12,fontWeight:600,cursor:rng||!co.name.trim()?"not-allowed":"pointer",background:rng?P.bg2:P.sage,color:rng?P.mu:P.white,whiteSpace:"nowrap",flexShrink:0,height:42,letterSpacing:.3,transition:"all .2s"}}>{rng?"Researching…":"Auto-Research"}</button>
         </div>
